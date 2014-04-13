@@ -46,7 +46,7 @@ add_typeerr:
 				"adding those make no sense"));
 }
 
-/* helper for add, val+addme -> val, with conversion if necessary */
+/* helper for builtin_add, val+addme -> val, with conversion if necessary */
 static int
 addtwo(struct value *val, const struct value *addme)
 {
@@ -77,6 +77,7 @@ addtwo(struct value *val, const struct value *addme)
 	return 1;
 }
 
+/* dumps the symbol table to stdout, always returns NULL */
 struct retrn*
 dump_symtbl(struct args* args)
 {
@@ -88,5 +89,7 @@ dump_symtbl(struct args* args)
 		printval(&sym->val);
 	}
 	puts("--- END OF SYMBOL TABLE DUMP");
+
+	return NULL;
 }
 

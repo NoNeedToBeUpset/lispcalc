@@ -35,6 +35,10 @@ main(int argc, char **argv)
 	setsymbol("+", val);
 	setsymbol("add", val);
 
+	val->funval->builtin = dump_symtbl;
+	setsymbol("dump", val);
+	setsymbol("symtbl", val);
+
 	return lispcalc(STDIN_FILENO);
 }
 
@@ -154,6 +158,8 @@ process(char *buf)
 	/* not a number, string or built-in special? search for a symbol */
 	else {
 		char *symnam;
+		struct args *args;
+		struct retrn *retv;
 
 		symnam = getsymname(buf);
 
@@ -165,16 +171,56 @@ process(char *buf)
 		if(!sym)
 			return mkretrn(1, symresolveerror(buf));
 
+		/* we are going to call this so it has to be a function */
+		else if(sym->val.valtype != funval)
+			return mkretrn(1, genericerror(err_type,
+							"can't call that"));
+
+		/* skip over the symbol name and free it */
 		buf += strlen(symnam);
 		free(symnam);
+
+		/* parse arguments
+		 * could we do lazy evaluation? that'd be cool
+		 * later maybe */
 		SKIPWS(buf);
+		args = NULL;
+		while(*buf && *buf != ')'){
+			struct args *lastarg;
 
-		if(*buf != ')' && sym->val.valtype != funval)
-			return mkretrn(1, genericerror(err_call,
-					"tried to call non-function"));
+			retv = process(buf);
 
-		/* TODO: some types (funval) will need special handling */
-		return mkretrn(0, &sym->val);
+			if(retv == NULL)
+				break;
+
+			if(!args){
+				args = xmalloc(sizeof(struct args));
+				lastarg = args;
+			}
+			else {
+				lastarg->next = xmalloc(sizeof(struct args));
+				lastarg = lastarg->next;
+			}
+
+			lastarg->next = NULL;
+			memcpy(&lastarg->val, retv->val, sizeof(struct value));
+
+			skipitem(&buf);
+			SKIPWS(buf);
+		}
+
+		if(*buf != ')'){
+			freeargs(args);
+			return mkretrn(1, genericerror(err_syntax,
+						"expected ')'"));
+		}
+
+		if(sym->val.funval->funtype == fun_builtin)
+			retv = sym->val.funval->builtin(args);
+
+		freeargs(args);
+
+		return retv;
 	}
 
 	return NULL;

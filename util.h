@@ -19,4 +19,8 @@ char* allocstring(const char *p);
 
 int hasfloat(const char *p);
 
+void skipitem(char **p);
+
+void freeargs(struct args *arg);
+
 #endif

@@ -42,6 +42,21 @@ errstr(errtype_t et){
 	}
 }
 
+/* frees everything */
+void
+freeargs(struct args *arg)
+{
+	struct args *next;
+
+	if(!arg)
+		return;
+
+	for(next = arg->next; arg; next = arg, arg = next->next){
+		freeval(&arg->val);
+		free(arg);
+	}
+}
+
 /* DOES NOT free the actual err struct, only the fields within it */
 void
 freeerr(struct error *err)
@@ -74,8 +89,10 @@ freeval(struct value *val)
 	if(!val)
 		return;
 
-	if(val->valtype == errval)
+	if(val->valtype == errval){
 		freeerr(val->errval);
+		free(val->errval);
+	}
 
 	else if(val->valtype == sval)
 		free(val->sval);
@@ -197,11 +214,35 @@ printval(struct value *val)
 		printf("\"%s\"\n", val->sval);
 		return;
 	case funval:
-		printf("<function>\n");
+		printf("<function, %s>\n",
+				val->funval->builtin ? "builtin" : "sourced");
 		return;
 	default:
 		puts("invalid value, wat");
 	}
+}
+
+/* skips an item
+ * NOTE: argument is a POINTER TO A POINTER to a buffer */
+void
+skipitem(char **p)
+{
+	char *ptr = *p;
+
+	/* special-case strings, anything else will go on until
+	 * whitespace or ')' comes along */
+	if(*ptr++ == '"'){
+		while(!(*ptr == '"' && *(ptr-1) != '\\') && *ptr)
+			ptr++;
+
+		*p = ptr;
+		return;
+	}
+
+	while(!isspace(*ptr) && *ptr != ')' && *ptr)
+		ptr++;
+
+	*p = ptr;
 }
 
 /* perlspeak: checks if $s ~= /^$m\s/ */
