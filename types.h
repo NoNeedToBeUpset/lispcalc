@@ -39,7 +39,7 @@ struct funspec {
 	funtype_t funtype;
 	union {
 		struct retrn* (*builtin)(struct args*);
-		int tonsofdickscantloadyet;
+		int tonsofdickscantloadtheseyet;
 	};
 };
 
