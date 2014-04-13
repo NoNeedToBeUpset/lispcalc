@@ -191,6 +191,27 @@ mkretrn(int shouldfree, struct value *val)
 	return r;
 }
 
+/* dynamically create a string and printf into it */
+char*
+mprintf(const char *fmt, ...)
+{
+	char *s;
+	int sz;
+	va_list va;
+
+	va_start(va, fmt);
+	sz = vsnprintf(NULL, 0, fmt, va) + 1;
+	va_end(va);
+
+	s = xmalloc(sz);
+
+	va_start(va, fmt);
+	vsnprintf(s, sz, fmt, va);
+	va_end(va);
+
+	return s;
+}
+
 /* print a value, what happens when you (symbol) */
 void
 printval(struct value *val)
@@ -222,21 +243,31 @@ printval(struct value *val)
 	}
 }
 
-/* skips an item
+/* skips an item (string, number, (.....)), ...
  * NOTE: argument is a POINTER TO A POINTER to a buffer */
 void
 skipitem(char **p)
 {
 	char *ptr = *p;
 
+	/* don't skip ')'s, they're too important */
+	if(*ptr == ')')
+		return;
+
 	/* special-case strings, anything else will go on until
 	 * whitespace or ')' comes along */
-	if(*ptr == '"'){
+	else if(*ptr == '"'){
 		ptr++;
+		//while(!(*ptr == '"' && *(ptr-1) != '\\') && *ptr)
 		while(!(*ptr == '"' && *(ptr-1) != '\\') && *ptr)
 			ptr++;
+
+		/* skip over the last " */
+		ptr += 2;
 	}
 
+	/* for (...) items we need to skip other items as if they where
+	 * chars, so we recurse */
 	else if(*ptr == '('){
 		ptr++;
 		while(*ptr != ')'){
@@ -245,12 +276,37 @@ skipitem(char **p)
 		}
 	}
 
+	/* symbol names and numbers end up here */
 	else {
 		while(!isspace(*ptr) && *ptr != ')' && *ptr)
 			ptr++;
 	}
 
 	*p = ptr;
+}
+
+char*
+stringify(const struct value *val)
+{
+	switch(val->valtype){
+	case sval:
+		/* for uniformity, we still do the same to strings */
+		return mprintf("%s", val->sval);
+	case ival:
+		return mprintf("%d", val->ival);
+	case fval:
+		return mprintf("%lf", val->fval);
+	case funval:
+		return mprintf("<function, %s>", val->funval->funtype ==
+			fun_builtin ? "builtin" : "sourced");
+	case errval:
+		return mprintf("<%s, %s>", errstr(val->errval->errtype),
+				val->errval->reason);
+	case invalidval:
+		return mprintf("<invalid>");
+	}
+
+	return NULL;
 }
 
 /* perlspeak: checks if $s ~= /^$m\s/ */
