@@ -4,6 +4,7 @@
 #include "symbol.h"
 #include "lispcalc.h"
 #include "util.h"
+#include "builtins.h"
 
 struct symbol*
 findsymbol(const char *symname)
@@ -55,8 +56,38 @@ setsymbol(const char *symname, struct value *val)
 	/* if a symbol existed, clear the old value */
 	else freeval(&sym->val);
 
-	memcpy(&sym->val, val, sizeof(struct value));
+	setval(&sym->val, val);
 	return sym;
+}
+
+void
+setval(struct value *dst, const struct value *src)
+{
+	dst->valtype = src->valtype;
+
+	switch(src->valtype){
+	case ival:
+		dst->ival = src->ival;
+		return;
+	case fval:
+		dst->fval = src->fval;
+		return;
+	case sval:
+		dst->sval = xmalloc(strlen(src->sval) + 1);
+		strcpy(dst->sval, src->sval);
+		return;
+	case funval:
+		dst->funval = xmalloc(sizeof(struct funspec));
+		dst->funval->funtype = src->funval->funtype;
+		if(src->funval->funtype == fun_builtin)
+			dst->funval->builtin = src->funval->builtin;
+		return;
+	case errval:
+		puts("TODO: fix setval for errval");
+		return;
+	case invalidval:
+		DEVELOPERPLS("setval on invalidval");
+	}
 }
 
 struct value*

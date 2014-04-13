@@ -3,6 +3,8 @@
 
 #include "lispcalc.h"
 
+void setval(struct value *dst, const struct value *src);
+
 struct symbol* findsymbol(const char *symname);
 struct symbol* getlastsymbol(void);
 struct symbol* setsymbol(const char *symname, struct value *val);
