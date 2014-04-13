@@ -33,6 +33,6 @@
 
 /* Definitions! We love to #define things */
 #define PROGRAM	"lispcalc"
-#define VERSION	"0.1"
+#define VERSION	"0.1-git"
 
 #endif /* __H_LISPCALC */
