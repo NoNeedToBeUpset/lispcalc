@@ -34,11 +34,12 @@ main(int argc, char **argv)
 	val->funval->builtin = builtin_add;
 
 	setsymbol("+", val);
-	setsymbol("add", val);
 
-	val->funval->builtin = dump_symtbl;
+	val->funval->builtin = builtin_dump_symtbl;
 	setsymbol("dump", val);
-	setsymbol("symtbl", val);
+
+	val->funval->builtin = builtin_println;
+	setsymbol("println", val);
 
 	free(val->funval);
 	val->valtype = fval;
@@ -61,6 +62,12 @@ lispcalc(int fd)
 	inbuf = xmalloc(inbufsz);
 
 	for(;;){
+		if(isatty(fd) && isatty(STDOUT_FILENO)){
+			i = write(STDOUT_FILENO, "> ", 2);
+			if(i < 0)
+				die("write");
+		}
+
 		i = read(fd, inbuf, inbufsz-1);
 		if(i < 0){
 			/* if EINTR, reason was probably ^c */
