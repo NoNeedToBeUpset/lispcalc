@@ -231,16 +231,24 @@ skipitem(char **p)
 
 	/* special-case strings, anything else will go on until
 	 * whitespace or ')' comes along */
-	if(*ptr++ == '"'){
+	if(*ptr == '"'){
+		ptr++;
 		while(!(*ptr == '"' && *(ptr-1) != '\\') && *ptr)
 			ptr++;
-
-		*p = ptr;
-		return;
 	}
 
-	while(!isspace(*ptr) && *ptr != ')' && *ptr)
+	else if(*ptr == '('){
 		ptr++;
+		while(*ptr != ')'){
+			skipitem(&ptr);
+			SKIPWS(ptr);
+		}
+	}
+
+	else {
+		while(!isspace(*ptr) && *ptr != ')' && *ptr)
+			ptr++;
+	}
 
 	*p = ptr;
 }

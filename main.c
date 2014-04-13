@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <math.h>
 #include "lispcalc.h"
 #include "symbol.h"
 #include "util.h"
@@ -38,6 +39,12 @@ main(int argc, char **argv)
 	val->funval->builtin = dump_symtbl;
 	setsymbol("dump", val);
 	setsymbol("symtbl", val);
+
+	free(val->funval);
+	val->valtype = fval;
+	val->fval = M_PI;
+	setsymbol("pi", val);
+	free(val);
 
 	return lispcalc(STDIN_FILENO);
 }
