@@ -270,7 +270,7 @@ skipitem(char **p)
 	 * chars, so we recurse */
 	else if(*ptr == '('){
 		ptr++;
-		while(*ptr != ')'){
+		while(*ptr && *ptr != ')'){
 			skipitem(&ptr);
 			SKIPWS(ptr);
 		}
