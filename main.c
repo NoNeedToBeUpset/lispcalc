@@ -9,45 +9,40 @@
 #include "util.h"
 #include "builtins.h"
 
+#include "initsym.h"
+
 struct symbol *symtbl;
 
+static void init_symtbl(void);
 static int lispcalc(int fd);
 static struct retrn* process(char *buf);
 
 int
 main(int argc, char **argv)
 {
-	struct value *val;
-
-	symtbl = xmalloc(sizeof(struct symbol));
-	symtbl->sym_next = NULL;
-	symtbl->name = "PROGRAM";
-	symtbl->val.valtype = sval;
-	symtbl->val.sval = PROGRAM;
-
-	setsymbol("VERSION", mkstr(VERSION));
-
-	val = xmalloc(sizeof(struct value));
-	val->valtype = funval;
-	val->funval = xmalloc(sizeof(struct funspec));
-	val->funval->funtype = fun_builtin;
-	val->funval->builtin = builtin_add;
-
-	setsymbol("+", val);
-
-	val->funval->builtin = builtin_dump_symtbl;
-	setsymbol("dump", val);
-
-	val->funval->builtin = builtin_println;
-	setsymbol("println", val);
-
-	free(val->funval);
-	val->valtype = fval;
-	val->fval = M_PI;
-	setsymbol("pi", val);
-	free(val);
+	init_symtbl();
 
 	return lispcalc(STDIN_FILENO);
+}
+
+/* initialize the symbol table, initial contents:
+ * PROGRAM - program name
+ * VERSION - lispcalc version */
+static void
+init_symtbl(void)
+{
+	int i;
+
+	/* the first one takes special treatment */
+	symtbl = xmalloc(sizeof(struct symbol));
+	symtbl->sym_next = NULL;
+
+	symtbl->name = initsyms[0].name;
+	setval(&symtbl->val, &initsyms[0].val);
+
+	/* then we can just repeat the same recipe */
+	for(i = 1; i < sizeof(initsyms)/sizeof(initsyms[0]); i++)
+		setsymbol(initsyms[i].name, &initsyms[i].val);
 }
 
 static int
@@ -62,7 +57,7 @@ lispcalc(int fd)
 	inbuf = xmalloc(inbufsz);
 
 	for(;;){
-		if(isatty(fd) && isatty(STDOUT_FILENO)){
+		if(isatty(STDOUT_FILENO)){
 			i = write(STDOUT_FILENO, "> ", 2);
 			if(i < 0)
 				die("write");
@@ -77,7 +72,8 @@ lispcalc(int fd)
 		}
 
 		if(i == 0){
-			puts("eof");
+			if(isatty(STDOUT_FILENO))
+				puts("eof");
 			return 0;
 		}
 
