@@ -53,7 +53,7 @@ main(int argc, char **argv)
 static int
 lispcalc(int fd)
 {
-	char *inbuf;
+	char *inbuf, *p;
 	int i, inbufsz;
 	struct retrn *retrn;
 
@@ -83,17 +83,26 @@ lispcalc(int fd)
 
 		/* ensure NULL termination */
 		inbuf[i] = 0;
-		retrn = process(inbuf);
-		/* loop again if the statement didn't return anything */
-		if(retrn == NULL)
-			continue;
+		p = inbuf;
+		while(*p){
+			retrn = process(p);
 
-		/* otherwise display and clear return value */
-		printval(retrn->val);
-		if(retrn->shouldfree){
-			freeval(retrn->val);
-			free(retrn->val);
-			free(retrn);
+			/* process should have processed 1 statement, skip that
+			 * before the next loop */
+			skipitem(&p);
+			SKIPWS(p);
+
+			/* loop again if the statement didn't return anything */
+			if(retrn == NULL)
+				continue;
+
+			/* otherwise display and clear return value */
+			printval(retrn->val);
+			if(retrn->shouldfree){
+				freeval(retrn->val);
+				free(retrn->val);
+				free(retrn);
+			}
 		}
 	}
 }
@@ -101,13 +110,18 @@ lispcalc(int fd)
 static struct retrn*
 process(char *buf)
 {
+	char *symnam;
+	struct retrn *retv;
 	struct symbol *sym;
 	struct value *val;
 
 	SKIPWS(buf);
-	/* if we don't find '(', we expect a just a value (int, float,
-	 * string or symbol name) here so we find and return it */
-	if(*buf != '('){
+
+	/* return immidiately on an empty string */
+	if(!*buf)
+		return NULL;
+
+	else if(*buf != '('){
 		/* handle numeric types */
 		if(isdigit(*buf) || *buf == '-' || *buf == '+'){
 			/* either we detect float or assume int */
@@ -142,38 +156,36 @@ process(char *buf)
 		DEVELOPERPLS("something unexpected turned up");
 	}
 
-	/* here, we will always have '(', so we skip that */
-	if(!strmatches(++buf, "define")){
-		/* define a new symbol */
-		sym = xmalloc(sizeof(struct symbol));
-
+	/* skip over the leading (, which we will always have here,
+	 * and then look for something very special
+	 * note: I could probably implement define as the other builtins,
+	 * i.e. place in symtbl */
+	else if(!strmatches(++buf, "define")){
 		/* first skip forward to new sym name */
 		buf += 6;
 		SKIPWS(buf);
 
 		/* extract symbol name and skip forward to the value */
-		sym->name = getsymname(buf);
+		symnam = getsymname(buf);
 		while(ISSYMCHAR(*buf))
 			buf++;
 
 		SKIPWS(buf);
 
-		/* first identify strings because that is easy */
-		if(*buf == '"'){
-			sym->val.valtype = sval;
-			sym->val.sval = getstring(buf);
-			if(sym->val.sval == NULL){
-				freesym(sym);
-				return mkretrn(1, genericerror(err_syntax,
-					"invalid string specification"));
-			}
+		/* make use of process()'s recursive capability */
+		retv = process(buf);
+
+		setsymbol(symnam, retv->val);
+
+		if(retv->shouldfree){
+			freeval(retv->val);
+			free(retv->val);
+			free(retv);
 		}
 	}
 	/* not a number, string or built-in special? search for a symbol */
 	else {
-		char *symnam;
 		struct args *args;
-		struct retrn *retv;
 
 		symnam = getsymname(buf);
 
@@ -217,7 +229,7 @@ process(char *buf)
 			}
 
 			lastarg->next = NULL;
-			memcpy(&lastarg->val, retv->val, sizeof(struct value));
+			setval(&lastarg->val, retv->val);
 
 			skipitem(&buf);
 			SKIPWS(buf);
