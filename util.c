@@ -274,6 +274,7 @@ skipitem(char **p)
 			skipitem(&ptr);
 			SKIPWS(ptr);
 		}
+		ptr++;	/* actually skip over the ) */
 	}
 
 	/* symbol names and numbers end up here */
