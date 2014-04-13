@@ -79,17 +79,39 @@ addtwo(struct value *val, const struct value *addme)
 
 /* dumps the symbol table to stdout, always returns NULL */
 struct retrn*
-dump_symtbl(struct args* args)
+builtin_dump_symtbl(struct args* args)
 {
+	char *s;
 	struct symbol *sym;
 
 	puts("--- START OF SYMBOL TABLE DUMP");
 	for(sym = symtbl; sym; sym = sym->sym_next){
-		printf("\"%s\" = ", sym->name);
-		printval(&sym->val);
+		s = stringify(&sym->val);
+		printf("\"%s\" = %s\n", sym->name, s);
+		free(s);
 	}
 	puts("--- END OF SYMBOL TABLE DUMP");
 
 	return NULL;
 }
 
+struct retrn*
+builtin_println(struct args *args)
+{
+	char *s;
+
+	/* no arguments -> just newline */
+	if(!args){
+		puts("");
+		return NULL;
+	}
+
+	for(; args; args = args->next){
+		s = stringify(&args->val);
+		printf("%s", s);
+		free(s);
+	}
+
+	puts("");
+	return NULL;
+}
